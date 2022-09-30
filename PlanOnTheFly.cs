@@ -11,35 +11,30 @@ using UnityEngine;
 namespace Sov.PlanOnTheFly
 {
     [StaticConstructorOnStartup]
-    public static class PlanOnTheFly
+    public static class InitPlanOnTheFly
     {
-        public static Texture2D Icon = ContentFinder<Texture2D>.Get("HeatMap");
-        static PlanOnTheFly() //our constructor
+        public static Texture2D Icon = ContentFinder<Texture2D>.Get("hardhat");
+        static InitPlanOnTheFly() 
         {
-           
-            Log.Message("Hello World!"); //Outputs "Hello World!" to the dev console.
             var harmony = new Harmony("SOV.PlanOnTheFly");
-            Harmony.DEBUG = true;
             harmony.PatchAll();
-            // var blah = new RimWorld.ForbidUtility().SetForbidden(t, true)
         }
 
     }
     [HarmonyPatch(typeof(RimWorld.GenConstruct), nameof(RimWorld.GenConstruct.PlaceBlueprintForBuild_NewTemp))]
-    public static class PlanOnFlyPatch
+    public static class BluePrint_Patch
     {
         static void Postfix(ref Blueprint_Build __result)
         {
-            if (Wrapper.Instance.PlanningMode)
+            if (PlanOnTheFlyToggle.Instance.PlanningMode)
             {
-                Log.Message($"Patched : {__result.Label}");
                 __result.SetForbidden(true);
             }
         }
     }
 
     [HarmonyPatch(typeof(RimWorld.PlaySettings), nameof(RimWorld.PlaySettings.DoPlaySettingsGlobalControls))]
-    public static class PlanOnFlyToggle
+    public static class ToggleIcon_Patch
     {
         static void Postfix(WidgetRow row, bool worldView)
         {
@@ -47,30 +42,25 @@ namespace Sov.PlanOnTheFly
             if (worldView)
                 return;
 
-            if (row == null || PlanOnTheFly.Icon == null)
-                return;
-            bool test = Wrapper.Instance.PlanningMode;
-            row.ToggleableIcon(ref test, PlanOnTheFly.Icon, "IT WORKED");
+            if (row == null || InitPlanOnTheFly.Icon == null)
+                return;   
+            row.ToggleableIcon(ref PlanOnTheFlyToggle.Instance.PlanningMode, InitPlanOnTheFly.Icon, "Click to toggle 'Planning'");
 
-            Wrapper.Instance.PlanningMode = test;
 
         }
     }
 
-    public sealed class Wrapper
+    public sealed class PlanOnTheFlyToggle
     {
-        private Wrapper _instance;
+       
 
-        private static readonly Lazy<Wrapper> lazy = new Lazy<Wrapper>(() => new Wrapper());
-        public static Wrapper Instance { get
+        private static readonly Lazy<PlanOnTheFlyToggle> lazy = new Lazy<PlanOnTheFlyToggle>(() => new PlanOnTheFlyToggle());
+        public static PlanOnTheFlyToggle Instance { get
             {
                return lazy.Value;
             } 
         }
-        private Wrapper()
-        {
-
-        }
-        public bool PlanningMode { get; set; }
+        private PlanOnTheFlyToggle(){ }
+        public bool PlanningMode;
     }
 }
