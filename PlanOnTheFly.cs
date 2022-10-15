@@ -11,17 +11,28 @@ using UnityEngine;
 namespace Sov.PlanOnTheFly
 {
     [StaticConstructorOnStartup]
-    public static class InitPlanOnTheFly
+    public static class PlanOnTheFly
     {
         public static Texture2D Icon = ContentFinder<Texture2D>.Get("hardhat");
-        static InitPlanOnTheFly() 
+      
+        static PlanOnTheFly() 
         {
             var harmony = new Harmony("SOV.PlanOnTheFly");
-            harmony.PatchAll();
+            harmony.PatchAll();       
         }
-
+        
     }
-    [HarmonyPatch(typeof(RimWorld.GenConstruct), nameof(RimWorld.GenConstruct.PlaceBlueprintForBuild_NewTemp))]
+    [DefOf]
+    public static class Hotkeys
+    {
+        public static KeyBindingDef PlanToggleKey;
+
+        static Hotkeys()
+        {         
+            DefOfHelper.EnsureInitializedInCtor(typeof(Hotkeys));
+        }
+    }
+    [HarmonyPatch(typeof(RimWorld.GenConstruct), nameof(RimWorld.GenConstruct.PlaceBlueprintForBuild))]
     public static class BluePrint_Patch
     {
         static void Postfix(ref Blueprint_Build __result)
@@ -42,14 +53,14 @@ namespace Sov.PlanOnTheFly
             if (worldView)
                 return;
 
-            if (row == null || InitPlanOnTheFly.Icon == null)
+            if (row == null || PlanOnTheFly.Icon == null)
                 return;   
-            row.ToggleableIcon(ref PlanOnTheFlyToggle.Instance.PlanningMode, InitPlanOnTheFly.Icon, "Click to toggle 'Planning'");
+            row.ToggleableIcon(ref PlanOnTheFlyToggle.Instance.PlanningMode, PlanOnTheFly.Icon, "Click to toggle 'Planning'");
 
 
         }
     }
-
+     
     public sealed class PlanOnTheFlyToggle
     {
        
@@ -60,7 +71,24 @@ namespace Sov.PlanOnTheFly
                return lazy.Value;
             } 
         }
-        private PlanOnTheFlyToggle(){ }
+        private PlanOnTheFlyToggle(){
+            PlanningMode = false;
+        }
         public bool PlanningMode;
+    }
+
+    [HarmonyPatch(typeof(UIRoot), nameof(UIRoot.UIRootOnGUI))]
+
+    internal static class UIRoot_OnGUI_onKeyPress
+    {
+        static void Postfix()
+        {
+            if (Current.ProgramState != ProgramState.Playing || Event.current.type != EventType.KeyDown || Event.current.keyCode == KeyCode.None) return;  
+            if (Hotkeys.PlanToggleKey.JustPressed)
+            {
+                PlanOnTheFlyToggle.Instance.PlanningMode = !PlanOnTheFlyToggle.Instance.PlanningMode;
+                Event.current.Use();
+            }
+        }
     }
 }
